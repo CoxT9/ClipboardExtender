@@ -28,17 +28,17 @@ from pynput.keyboard import Key, Controller, Listener
 
 import clipboard
 
-class Candidates:
-    NONE, F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, CLEAR, KILL = range(13)
+class Utilities:
 
-class GlobalData:
+    class FunctionKeys:
+        NONE, F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, CLEAR, KILL = range(13)
 
     def __init__(self):
-        self.firstEnter = False
         self.ctrlDown = False
-        self.currLock = Candidates.NONE
+        self.currLock = self.FunctionKeys.NONE
         self.keyboard = Controller()
         self.keyToEnum = self.buildDict()
+        self.boards = [None] * 10
 
     def buildDict(self):
         myDct = {}
@@ -49,108 +49,97 @@ class GlobalData:
         return myDct
 
     def clear(self):
-        self.firstEnter = False
+
         self.ctrlDown = False
-        self.currLock = Candidates.NONE
+        self.currLock = self.FunctionKeys.NONE
+        self.boards = [None] * 10
 
-myGlobals = GlobalData()
+    def sendCopy(self):
+        self.keyboard.press(Key.ctrl)
+        self.keyboard.press('c')
+        self.keyboard.release('c')
+        self.keyboard.release(Key.ctrl)
 
-def onPress(key):
-    global myGlobals
+    def sendPaste(self):
+        self.keyboard.press(Key.ctrl)
+        self.keyboard.press('v')
+        self.keyboard.release(Key.ctrl)
+        self.keyboard.release('v')
 
-    if not myGlobals.ctrlDown:
+
+class ClipboardManager:
+
+    def __init__(self):
+        self.utils = Utilities()
+
+    def onPress(self, key):
+        if not self.utils.ctrlDown:
+            if key == Key.ctrl:
+                self.utils.ctrlDown = True
+        elif self.isFKey(key): # get the lock from F keys
+            if self.utils.currLock == self.utils.FunctionKeys.NONE: # lock available
+                self.utils.currLock = self.fKeyToValue(key)
+
+            if self.utils.currLock == self.utils.FunctionKeys.CLEAR:
+                self.utils.clear()
+
+        else:
+            try:
+                char = str(key)[2:3]
+            except:
+                char = 'x'
+
+            if char == 'b':
+                self.writeToClipboard()
+            elif char == 'n':
+                self.readFromClipboard()
+        
+        ### DEBUG ###
+        if key == Key.enter:
+            self.utils.clear()
+            return False
+
+    def onRelease(self, key):
+        if self.utils.currLock == self.utils.FunctionKeys.KILL:
+            self.utils.clear()
+            return False
+
         if key == Key.ctrl:
-            myGlobals.ctrlDown = True
+            self.utils.ctrlDown = False
+        elif self.isFKey(key):
+            self.utils.currLock = self.utils.FunctionKeys.NONE
 
-    elif isFKey(key): # get the lock from F keys
+    def writeToClipboard(self): # Write to board, read from highlight
+        self.utils.sendCopy()
+        data = clipboard.paste()
+        print data
+        currBoard = self.utils.currLock - 1
+        print "write", currBoard
+        self.utils.boards[currBoard] = data
 
-        if myGlobals.currLock == Candidates.NONE: # lock available
-            myGlobals.currLock = fKeyToValue(key)
+    def readFromClipboard(self): # Read from board, write to highlight
+        currBoard = self.utils.currLock - 1
+        print "read", currBoard
+        print self.utils.boards[currBoard]
+        data = self.utils.boards[currBoard]
+        if data != None:
+            print "copy"
+            clipboard.copy(data)
 
-        if myGlobals.currLock == Candidates.CLEAR:
-            resetService()
+        self.utils.sendPaste()
 
-    else:
-        try:
-            x = str(key)[2:3]
-        except:
-            pass
+    def isFKey(self, key):
+        return str(key) in self.utils.keyToEnum.keys()
 
-        if x == 'b':
-            writeToClipboard()
-        elif x == 'n':
-            readFromClipboard()
-
-    
-
-
-    ### DEBUG ###
-    if key == Key.enter:
-        clearClipboard()
-        return False
-
-def onRelease(key):
-    global myGlobals
-
-    if myGlobals.currLock == Candidates.KILL:
-        resetService()
-        return False
-
-    if key == Key.ctrl:
-        myGlobals.ctrlDown = False
-    elif isFKey(key):
-        myGlobals.currLock = Candidates.NONE
-
-def resetService():
-    # Reset all constants and locks, prepare for exit
-    global myGlobals
-    myGlobals.clear()
-    clearClipboard()
-    
-def clearClipboard():
-    print "clear"
-
-def writeToClipboard():
-    global myGlobals
-
-    myGlobals.keyboard.press(Key.ctrl)
-    myGlobals.keyboard.press('c')
-    myGlobals.keyboard.release('c')
-    myGlobals.keyboard.release(Key.ctrl)
-    # Tricky tricky! We just copied our data to the clipboard. Now let's store it!
-    data = clipboard.paste()
-
-    currBoard = myGlobals.currLock - 1
-    print "write", currBoard
-
-def readFromClipboard():
-    global myGlobals
-    currBoard = myGlobals.currLock - 1
-    print "read", currBoard
-
-    # put my data from lock into clipboard
-    # clipboard.copy(data_object)
-
-    myGlobals.keyboard.press(Key.ctrl)
-    myGlobals.keyboard.press('v')
-    myGlobals.keyboard.release(Key.ctrl)
-    myGlobals.keyboard.release('v')
-
-def isFKey(key):
-    global myGlobals
-    return str(key) in myGlobals.keyToEnum.keys()
-
-def fKeyToValue(key):
-    global myGlobals
-    return myGlobals.keyToEnum[str(key)]
+    def fKeyToValue(self, key):
+        return self.utils.keyToEnum[str(key)]
 
 def main():
     time.sleep(1)
-    global myGlobals
-    myGlobals.clear()
+    mgr = ClipboardManager()
     print "Launching clipboard service..."
 
-    with Listener(on_press=onPress, on_release=onRelease) as listener:
+    with Listener(on_press=mgr.onPress, on_release=mgr.onRelease) as listener:
         listener.join()
     print "Returned to main thread."
     print "Exiting Service."
