@@ -26,7 +26,7 @@ import time
 import sys
 from pynput.keyboard import Key, Controller, Listener
 
-import clipboard
+import pyperclip
 
 class Utilities:
 
@@ -49,23 +49,29 @@ class Utilities:
         return myDct
 
     def clear(self):
-
         self.ctrlDown = False
         self.currLock = self.FunctionKeys.NONE
         self.boards = [None] * 10
 
     def sendCopy(self):
+        print "...ctrlc"
+        self.keyboard.press(Key.ctrl)
+        self.keyboard.press('c')
+        self.keyboard.release('c')
+        self.keyboard.release(Key.ctrl)
+
+        # hack: do it twice
         self.keyboard.press(Key.ctrl)
         self.keyboard.press('c')
         self.keyboard.release('c')
         self.keyboard.release(Key.ctrl)
 
     def sendPaste(self):
+        print "...ctrlv"
         self.keyboard.press(Key.ctrl)
         self.keyboard.press('v')
         self.keyboard.release(Key.ctrl)
         self.keyboard.release('v')
-
 
 class ClipboardManager:
 
@@ -91,9 +97,9 @@ class ClipboardManager:
 
             if char == 'b':
                 self.writeToClipboard()
-            elif char == 'n':
+            elif char == 'm':
                 self.readFromClipboard()
-        
+
         ### DEBUG ###
         if key == Key.enter:
             self.utils.clear()
@@ -111,11 +117,12 @@ class ClipboardManager:
 
     def writeToClipboard(self): # Write to board, read from highlight
         self.utils.sendCopy()
-        data = clipboard.paste()
-        print data
+        data = pyperclip.paste()
+        print data, " is copy data"
         currBoard = self.utils.currLock - 1
         print "write", currBoard
         self.utils.boards[currBoard] = data
+        print self.utils.boards[currBoard], "is the conf data"
 
     def readFromClipboard(self): # Read from board, write to highlight
         currBoard = self.utils.currLock - 1
@@ -124,7 +131,7 @@ class ClipboardManager:
         data = self.utils.boards[currBoard]
         if data != None:
             print "copy"
-            clipboard.copy(data)
+            pyperclip.copy(data)
 
         self.utils.sendPaste()
 
