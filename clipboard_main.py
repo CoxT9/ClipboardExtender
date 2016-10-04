@@ -2,25 +2,14 @@
  - This code uses a small package called Pynut to handle keydown/keyup events. 
  Credits to Moses Palmer (https://github.com/moses-palmer/) for the underlying code.
 
- - This code uses a clipboard module called Clipboard for under-the-hood clipboard read/write
- Credits to Terry Yin (https://github.com/terryyin) for the underlying code.
+ - This code uses a clipboard module called Pyperclip for under-the-hood clipboard read/write
+ Credits to Al Sweigart (https://github.com/asweigart/pyperclip) for the underlying code.
 
  The goal of this project is an augmented approach to the standard clipboard.
  The end result will be a background process that provides 10 different clipboards (F1,10)
  The tool will also provide the ability to clear all boards (F11) or end the service (F12)
- Copy is ctrl-f#-b, Paste is ctrl-f#-n, clear is ctrl-f11, kill is ctrl-f12.
- Note that this tool is ultimately intended to be platform-agnostic
-
- - an issue that seems unavoidable is that just about any keyboard combination has some conflicting funcationality,
- this could be something small and annoying like ctrl-f, or something disastrous like alt-f4. Ideal keyboard usage
- may still be explored, but the first goal is a working prototype
+ Copy is ctrl-f#-b, Paste is ctrl-f#-m, clear is ctrl-f11, kill is ctrl-f12.
 """
-
-# Currently able to read in (copy in) highlighted text or even a file, it looks like.
-# Next: add structure(s) for storing 10 different clipboard buffers
-# Then plug in clipboard and storage in read/write functions
-# test, test, test (still in terminal)
-# move to have shell script that launches py script
 
 import time
 import sys
@@ -54,20 +43,19 @@ class Utilities:
         self.boards = [None] * 10
 
     def sendCopy(self):
-        print "...ctrlc"
         self.keyboard.press(Key.ctrl)
         self.keyboard.press('c')
         self.keyboard.release('c')
         self.keyboard.release(Key.ctrl)
 
-        # hack: do it twice
+        # I send copy twice because the first copy
+        # after a paste gets lost
         self.keyboard.press(Key.ctrl)
         self.keyboard.press('c')
         self.keyboard.release('c')
         self.keyboard.release(Key.ctrl)
 
     def sendPaste(self):
-        print "...ctrlv"
         self.keyboard.press(Key.ctrl)
         self.keyboard.press('v')
         self.keyboard.release(Key.ctrl)
@@ -100,11 +88,6 @@ class ClipboardManager:
             elif char == 'm':
                 self.readFromClipboard()
 
-        ### DEBUG ###
-        if key == Key.enter:
-            self.utils.clear()
-            return False
-
     def onRelease(self, key):
         if self.utils.currLock == self.utils.FunctionKeys.KILL:
             self.utils.clear()
@@ -118,19 +101,13 @@ class ClipboardManager:
     def writeToClipboard(self): # Write to board, read from highlight
         self.utils.sendCopy()
         data = pyperclip.paste()
-        print data, " is copy data"
         currBoard = self.utils.currLock - 1
-        print "write", currBoard
         self.utils.boards[currBoard] = data
-        print self.utils.boards[currBoard], "is the conf data"
 
     def readFromClipboard(self): # Read from board, write to highlight
         currBoard = self.utils.currLock - 1
-        print "read", currBoard
-        print self.utils.boards[currBoard]
         data = self.utils.boards[currBoard]
         if data != None:
-            print "copy"
             pyperclip.copy(data)
 
         self.utils.sendPaste()
@@ -144,13 +121,9 @@ class ClipboardManager:
 def main():
     time.sleep(1)
     mgr = ClipboardManager()
-    print "Launching clipboard service..."
 
     with Listener(on_press=mgr.onPress, on_release=mgr.onRelease) as listener:
         listener.join()
-    print "Returned to main thread."
-    print "Exiting Service."
 
 if __name__ == "__main__":
-    # We will be calling this code from shell script
     main()
