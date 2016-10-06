@@ -1,14 +1,16 @@
 # ClipboardExtender
-A control-group inspired approach to expanding the clipboard utility
+A control-group inspired approach to making clipboards great again
 
 This project was started at Hack The North 2016.
 
-The intention of this project is to extend the current utility of the unix clipboard. A control-group approach is proposed.
+The intention of this project is to extend the current utility of the unix clipboard. I used "control groups" to make this happen.
 
-Control-groups are inspired from RTS games, where ctrl-F# is used to read from/write to a specific group. # is a single integer 0 <= 10. F11 clears the clipboard and F12 ends the service. 
+Control-groups are from RTS games, where ctrl-# is used to read from/write to a specific group. # is a single integer 0 <= 9. 
 
-Therefore, this project aims to provide 10 seperate clipboards, each accessed by the corresponding numerical digit.
+Therefore, this project provides 10 seperate clipboards, each accessed by the corresponding numerical digit.
 
-This project is currently geared towards Unix systems ( python can be used both for clipboard management, keyboard events and developing a unix daemon ).
+Ctrl+F# (1 through 10) provides access to a different clipboard. Ctrl-F#-b will copy and Ctrl-F#-m will paste. Ctrl-F11 will clear all clipboard and Ctrl-F12 will kill the process.
 
-Future: Windows application, stack-based clipboard, examination of other python libraries or alternatives to python entirely, more user customisability (ie: hotkey management for F or even CTRL keys)
+Use the .sh file provided to run the script without a console window.
+
+This script works for Ubuntu with text in clipboards. 10 different text entries can be stored.
